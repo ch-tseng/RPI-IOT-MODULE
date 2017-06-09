@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import time
+#from threading import Thread
 import threading
 import serial
-
-UPDATERATE = 0.25  # the time period  to request for new data from RX (seconds)
 
 class SPIOT:
 
@@ -139,51 +138,8 @@ class SPIOT:
                     for line in Serial.read():
                         dataRX = self.ByteToHex(line)
                         stringRX = stringRX + "-" + dataRX
-
-                        if(dataRX[:1]=="1"):    #Smart PLUG device
-                            deviceID = int(dataRX, 16)-16
-
-                            if(Serial.in_waiting):   #讀取第三個byte
-                                for line in Serial.read():
-                                    dataRX = self.ByteToHex(line)
-                                    stringRX = stringRX + "-" + dataRX
-                                    #print("deviceData={}, DOOR typeID={} , deviceID={}, value={}".format(deviceData, self.dTypeName["PLUG"], deviceID, int(dataRX, 16)))
-
-                                    if self.dTypeName["PLUG"]["ID"] in deviceData:
-                                        deviceData[self.dTypeName["PLUG"]["ID"]][deviceID] = int(dataRX, 16)
-
-                                    else:
-                                        deviceData[self.dTypeName["PLUG"]["ID"]] = { deviceID: int(dataRX, 16) }
-
-                                    if self.dTypeName["PLUG"]["ID"] in accessData:
-                                        accessData[self.dTypeName["PLUG"]["ID"]][deviceID] = int(time.time())
-
-                                    else:
-                                        accessData[self.dTypeName["PLUG"]["ID"]] = { deviceID: int(time.time()) }
-
            
-                        elif(dataRX[:1]=="2"):    #PIR device
-                            deviceID = int(dataRX, 16)-32
-
-                            if(Serial.in_waiting):   #讀取第三個byte
-                                for line in Serial.read():
-                                    dataRX = self.ByteToHex(line)
-                                    stringRX = stringRX + "-" + dataRX
-                                    #print("deviceData={}, DOOR typeID={} , deviceID={}, value={}".format(deviceData, self.dTypeName["PIR"], deviceID, int(dataRX, 16)))
-
-                                    if self.dTypeName["PIR"]["ID"] in deviceData:
-                                        deviceData[self.dTypeName["PIR"]["ID"]][deviceID] = int(dataRX, 16)
-                                        
-                                    else:
-                                        deviceData[self.dTypeName["PIR"]["ID"]] = { deviceID: int(dataRX, 16) }  
-
-                                    if self.dTypeName["PIR"]["ID"] in accessData:
-                                        accessData[self.dTypeName["PIR"]["ID"]][deviceID] = int(time.time())
-
-                                    else:
-                                        accessData[self.dTypeName["PIR"]["ID"]] = { deviceID: int(time.time()) }
-
-                        elif(dataRX[:1]=="3"):    #DOOR device
+                        if(dataRX[:1]=="3"):    #DOOR device
                             deviceID = int(dataRX, 16)-48
 
                             if(Serial.in_waiting):   #讀取第三個byte
@@ -194,16 +150,17 @@ class SPIOT:
 
                                     if self.dTypeName["DOOR"]["ID"] in deviceData:
                                         deviceData[self.dTypeName["DOOR"]["ID"]][deviceID] = int(dataRX, 16)
-
+                                        
                                     else:
-                                        deviceData[self.dTypeName["DOOR"]["ID"]] = { deviceID: int(dataRX, 16) }
+                                        deviceData[self.dTypeName["DOOR"]["ID"]] = { deviceID: int(dataRX, 16) }  
 
                                     if self.dTypeName["DOOR"]["ID"] in accessData:
                                         accessData[self.dTypeName["DOOR"]["ID"]][deviceID] = int(time.time())
 
                                     else:
                                         accessData[self.dTypeName["DOOR"]["ID"]] = { deviceID: int(time.time()) }
- 
+
+
                         elif(dataRX[:1]=="4"):    #TH device
                             deviceID = int(dataRX, 16)-64
 
@@ -309,5 +266,7 @@ class SPIOT:
             self.queryDevices()
 
     def begin(self):
-        t = threading.Timer(UPDATERATE, self.bgUpdate)
+        #background_thread = Thread(target=self.bgUpdate(),args = (), name="queueUpdate")
+        #background_thread.start()
+        t = threading.Timer(0.5, self.bgUpdate)
         t.start()
