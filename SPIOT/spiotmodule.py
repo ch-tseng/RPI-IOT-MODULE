@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import time
-from threading import Thread
+#from threading import Thread
+import threading
 import serial
 
 class SPIOT:
@@ -31,10 +32,40 @@ class SPIOT:
         Serial.write(serial.to_bytes([0x08, 0x00, 0x00, 0x00, 0x00, 0x00]))
         #time.sleep(0.3)
 
-    def removeAllDevice(self):
+    def removeAllDevices(self):
         Serial = self.serial
         Serial.write(serial.to_bytes([0x0F, 0xF0, 0x5A, 0xA5, 0x00, 0x00]))
-        time.sleep(0.3)
+        #time.sleep(0.3)
+
+    def removeGroupDevices(self, typeName):
+        Serial = self.serial
+        tNameList = self.dTypeName
+        intValue = tNameList[typeName]["HEX"]
+        hex = '0x{0:02x}'.format(intValue) 
+        Serial.write(serial.to_bytes([0x0E, hex, 0x5A, 0xA5, 0x00, 0x00]))
+        #print("RETURN --->{}".format(hex))
+        #time.sleep(0.3)
+
+    def removeTheDevice(self, typeName, idDevice):
+        Serial = self.serial
+        tNameList = self.dTypeName
+        intValue = tNameList[typeName]["HEX"]
+        hex = '0x{0:02x}'.format(intValue+idDevice)
+        Serial.write(serial.to_bytes([0x0E, hex, 0x5A, 0xA5, 0x00, 0x00]))
+
+    def getDeviceData(self, typeName, idDevice):
+        dData = self.dValue
+        tNameList = self.dTypeName
+
+        idType = tNameList[typeName]["ID"]
+
+        try:
+            intValue = dData[idType][idDevice]
+
+        except:
+            intValue = 0
+
+        return intValue
 
     def ByteToHex( self, byteStr ):
         """
@@ -83,83 +114,105 @@ class SPIOT:
         stringRX = ""
         Serial = self.serial
       
-        if(Serial.in_waiting):   #讀取第一個byte
-            for line in Serial.read():
-                dataRX = self.ByteToHex(line)
-                stringRX = stringRX + dataRX
-                deviceData = self.dValue
+        for line in Serial.read():
+            dataRX = self.ByteToHex(line)
+            stringRX = stringRX + dataRX
+            deviceData = self.dValue
             
-                if(dataRX=='06'):
-                    queueRX[0] = dataRX
+            if(dataRX=='06'):
+                queueRX[0] = dataRX
  
-                    if(Serial.in_waiting):   #讀取第二個byte
-                        for line in Serial.read():
-                            dataRX = self.ByteToHex(line)
-                            stringRX = stringRX + "-" + dataRX
+                if(Serial.in_waiting):   #讀取第二個byte
+                    for line in Serial.read():
+                        dataRX = self.ByteToHex(line)
+                        stringRX = stringRX + "-" + dataRX
            
-                            if(dataRX[:1]=="3"):    #DOOR device
-                                deviceID = int(dataRX, 16)-48
+                        if(dataRX[:1]=="3"):    #DOOR device
+                            deviceID = int(dataRX, 16)-48
 
-                                if(Serial.in_waiting):   #讀取第三個byte
-                                    for line in Serial.read():
-                                        dataRX = self.ByteToHex(line)
-                                        stringRX = stringRX + "-" + dataRX
-                                        print("deviceData={}, DOOR typeID={} , deviceID={}, value={}".format(deviceData, self.dType["DOOR"], deviceID, int(dataRX, 16)))
+                            if(Serial.in_waiting):   #讀取第三個byte
+                                for line in Serial.read():
+                                    dataRX = self.ByteToHex(line)
+                                    stringRX = stringRX + "-" + dataRX
+                                    #print("deviceData={}, DOOR typeID={} , deviceID={}, value={}".format(deviceData, self.dTypeName["DOOR"], deviceID, int(dataRX, 16)))
 
-                                        if self.dType["DOOR"] in deviceData:
-                                            deviceData[self.dType["DOOR"]][deviceID] = int(dataRX, 16)
-                                        else:
-                                            deviceData[self.dType["DOOR"]] = { deviceID: int(dataRX, 16) }  
-
-
-                            elif(dataRX[:1]=="4"):    #TH device
-                                deviceID = int(dataRX, 16)-64
-
-                                if(Serial.in_waiting):   #讀取第三個byte
-                                    for line in Serial.read():
-                                        dataRX = self.ByteToHex(line)
-                                        stringRX = stringRX + "-" + dataRX
-
-                                        print("deviceData={}, TH_T typeID={} , deviceID={}, value={}".format(deviceData, self.dType["TH_T"], deviceID, int(dataRX, 16)))
-
-                                        if self.dType["TH_T"] in deviceData:
-                                            deviceData[self.dType["TH_T"]][deviceID] = int(dataRX, 16)
-                                        else:
-                                            deviceData[self.dType["TH_T"]] = { deviceID: int(dataRX, 16) }
+                                    if self.dTypeName["DOOR"]["ID"] in deviceData:
+                                        deviceData[self.dTypeName["DOOR"]["ID"]][deviceID] = int(dataRX, 16)
+                                    else:
+                                        deviceData[self.dTypeName["DOOR"]["ID"]] = { deviceID: int(dataRX, 16) }  
 
 
-                                        if(Serial.in_waiting):   #讀取第四個byte
-                                            for line in Serial.read():
-                                                dataRX = self.ByteToHex(line)
-                                                stringRX = stringRX + "-" + dataRX
-                                            
-                                                if self.dType["TH_H"] in deviceData:
-                                                    deviceData[self.dType["TH_H"]][deviceID] = int(dataRX, 16)
-                                                else:
-                                                    deviceData[self.dType["TH_H"]] = { deviceID: int(dataRX, 16) }
+                        elif(dataRX[:1]=="4"):    #TH device
+                            deviceID = int(dataRX, 16)-64
 
-                        self.dValue = deviceData
-                        print ("Received and coverted: {}".format(stringRX))
-                        print("self.dValue = {}".format(deviceData))
+                            if(Serial.in_waiting):   #讀取第三個byte
+                                for line in Serial.read():
+                                    dataRX = self.ByteToHex(line)
+                                    stringRX = stringRX + "-" + dataRX
 
-                #elif(dataRX=='09'):
+                                    #print("deviceData={}, TH_T typeID={} , deviceID={}, value={}".format(deviceData, self.dTypeName["TH_T"], deviceID, int(dataRX, 16)))
+                                    if self.dTypeName["TH_T"]["ID"] in deviceData:
+                                        deviceData[self.dTypeName["TH_T"]["ID"]][deviceID] = int(dataRX, 16)
+                                    else:
+                                        deviceData[self.dTypeName["TH_T"]["ID"]] = { deviceID: int(dataRX, 16) }
 
 
-        else:
-            self.pushDevice()
-            time.sleep(0.35)
+                                    if(Serial.in_waiting):   #讀取第四個byte
+                                        for line in Serial.read():
+                                            dataRX = self.ByteToHex(line)
+                                            stringRX = stringRX + "-" + dataRX
+                                           
+                                            if self.dTypeName["TH_H"]["ID"] in deviceData:
+                                                deviceData[self.dTypeName["TH_H"]["ID"]][deviceID] = int(dataRX, 16)
+                                            else:
+                                                deviceData[self.dTypeName["TH_H"]["ID"]] = { deviceID: int(dataRX, 16) }
 
-    def deviceTypeID(typeID=2):
-        typeList = self.dType
-        dTypeName = (key for key, value in typeList.items() if value == typeID).next()
-        return dTypeName
+                    self.dValue = deviceData
+                    #print ("Received and coverted: {}".format(stringRX))
+                    #print("self.dValue = {}".format(deviceData))
 
-    #def getData(self, tDevice, dID):
-        
+
+    def bgUpdate(self):
+        Serial = self.serial
+            
+        while True:
+            if(Serial.in_waiting):
+                self.updateQueue()
+
+            else:
+                Serial.flushInput()
+                self.pushDevice()
+                time.sleep(0.35)
+
+        lock.release()
+
+    def id2DeviceGroupName(self, typeID=2):
+        typeList = self.dTypeName
+        #dTypeName = (key for key, value in typeList.items() if value == typeID).next()
+        tName = ""
+        for key, value in dTypeName.items():
+            if(typeID== value["ID"]):
+                tName = key
+                break
+
+        return tName
+
+    def id2DeviceGroupHEX(self, typeID=2):
+        typeList = self.dTypeName
+        #dTypeName = (key for key, value in typeList.items() if value == typeID).next()
+        dHEX = ""
+        for key, value in dTypeName.items():
+            if(typeID== value["ID"]):
+                dHEX = value["HEX"]
+                break
+
+        return dHEX
 
     def __init__(self, baudrate=115200, portname='/dev/ttyAMA0', encrypt=False):
         self.maxDeviceNum = 16
-        self.dType = {"PIR": 1, "DOOR": 2, "TH_T": 3, "TH_H": 4, "PLUG": 5 }
+        self.dTypeName = {"PIR": {"ID":1, "HEX":0x20}, "DOOR": {"ID":2, "HEX":0x30}, \
+                            "TH_T": {"ID":3, "HEX":0x40}, "TH_H": {"ID":4, "HEX":0x40}, "PLUG": {"ID":5,"HEX":0x10} }
+        self.dGroup = {1: 0x20, 2: 0x30, 3: 0x40, 4: 0x40, 5:0x10 }
         self.dValue = {}
 
         self.encrypt = encrypt
@@ -179,5 +232,7 @@ class SPIOT:
             self.queryDevices()
 
     def begin(self):
-        background_thread = Thread(target=self.updateQueue())
-        background_thread.start()
+        #background_thread = Thread(target=self.bgUpdate(),args = (), name="queueUpdate")
+        #background_thread.start()
+        t = threading.Timer(0.5, self.bgUpdate)
+        t.start()
