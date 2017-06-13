@@ -5,6 +5,10 @@ import threading
 import serial
 
 UPDATERATE = 0.25  # the time period  to request for new data from RX (seconds)
+MAXDEVICE_NUM = 16
+DEVICE_INFO = {"PIR": {"ID":1, "HEX":0x20}, "DOOR": {"ID":2, "HEX":0x30}, \
+               "TH_T": {"ID":3, "HEX":0x40}, "TH_H": {"ID":4, "HEX":0x40}, "PLUG": {"ID":5,"HEX":0x10} }
+DEVICE_GROUP_HEX = {1: 0x20, 2: 0x30, 3: 0x40, 4: 0x40, 5:0x10 }
 
 class SPIOT:
 
@@ -67,6 +71,22 @@ class SPIOT:
             intValue = 0
 
         return intValue
+
+    def getDeviceTime(self, typeName, idDevice):
+        dAccessTime = self.lastAccess
+        tNameList = self.dTypeName
+
+        idType = tNameList[typeName]["ID"]
+
+        try:
+            lastAccessTime = dAccessTime[idType][idDevice]
+            seconds = int(time.time()) - lastAccessTime
+
+        except:
+            seconds = 999999999
+
+        return seconds
+
 
     def flashDevice(self, typeName, idDevice):
         Serial = self.serial
@@ -285,10 +305,10 @@ class SPIOT:
         return dHEX
 
     def __init__(self, baudrate=115200, portname='/dev/ttyAMA0', encrypt=False):
-        self.maxDeviceNum = 16
-        self.dTypeName = {"PIR": {"ID":1, "HEX":0x20}, "DOOR": {"ID":2, "HEX":0x30}, \
-                            "TH_T": {"ID":3, "HEX":0x40}, "TH_H": {"ID":4, "HEX":0x40}, "PLUG": {"ID":5,"HEX":0x10} }
-        self.dGroup = {1: 0x20, 2: 0x30, 3: 0x40, 4: 0x40, 5:0x10 }
+        self.process = False
+        self.maxDeviceNum = MAXDEVICE_NUM
+        self.dTypeName = DEVICE_INFO
+        self.dGroup = DEVICE_GROUP_HEX
         self.dValue = {}
         self.lastAccess = {}
 
@@ -309,5 +329,8 @@ class SPIOT:
             self.queryDevices()
 
     def begin(self):
-        t = threading.Timer(UPDATERATE, self.bgUpdate)
-        t.start()
+        self.process = True
+        self.t = threading.Timer(UPDATERATE, self.bgUpdate)
+        self.t.daemon = True
+        self.t.start()
+

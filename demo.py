@@ -1,4 +1,4 @@
-import time
+import time, sys
 from SPIOT.spiotmodule import SPIOT
 
 iot = SPIOT(baudrate=115200, portname='/dev/ttyAMA0', encrypt=False)
@@ -11,12 +11,17 @@ iot.begin()
 iot.flashDevice("DOOR", 0)
 
 while True:
-    #iot.printRawData()
-    #iot.updateQueue()
-    #print ("update")
-    #iot.removeGroupDevices("PIR")
-    print("DOOR --> {}".format(iot.getDeviceData("DOOR", 0)))
-    print("TH_T --> {}".format(iot.getDeviceData("TH_T", 0)))
-    print("TH_H --> {}".format(iot.getDeviceData("TH_H", 0)))
+    try:
+        #iot.printRawData()
+        #iot.updateQueue()
+        #print ("update")
+        #iot.removeGroupDevices("PIR")
+        print("DOOR --> {}, seconds: {}".format(iot.getDeviceData("DOOR", 0), iot.getDeviceTime("DOOR", 0)))
+        print("TH_T --> {}, seconds: {}".format(iot.getDeviceData("TH_T", 0), iot.getDeviceTime("TH_T", 0)))
+        print("TH_H --> {}, seconds: {}".format(iot.getDeviceData("TH_H", 0), iot.getDeviceTime("TH_H", 0)))
 
-    time.sleep(0.5)
+        time.sleep(0.5)
+
+    except KeyboardInterrupt:
+        print "Bye"
+        sys.exit()
