@@ -4,8 +4,12 @@ import time
 import threading
 import serial
 
+#You can adjust the parameters below -------------------------------------------------------------------
+debug = False
 UPDATERATE = 0.25  # the time period  to request for new data from RX (seconds)
 MAXDEVICE_NUM = 16
+
+#Don't update the parameters below ---------------------------------------------------------------------
 DEVICE_INFO = {"PIR": {"ID":1, "HEX":0x20}, "DOOR": {"ID":2, "HEX":0x30}, \
                "TH_T": {"ID":3, "HEX":0x40}, "TH_H": {"ID":4, "HEX":0x40}, "PLUG": {"ID":5,"HEX":0x10} }
 DEVICE_GROUP_HEX = {1: 0x20, 2: 0x30, 3: 0x40, 4: 0x40, 5:0x10 }
@@ -17,7 +21,7 @@ class SPIOT:
         Serial = self.serial
 
         for line in Serial.read():
-            print(str(count) + str(': ') + self.ByteToHex(line) )
+            #print(str(count) + str(': ') + self.ByteToHex(line) )
             count = count+1
 
         self.pushDevice()
@@ -26,6 +30,7 @@ class SPIOT:
         Serial = self.serial
         Serial.write(serial.to_bytes([0x99, 0x00, 0x00, 0x00, 0x00, 0x00]))
         time.sleep(0.3)
+        self.queryDevices()
 
     def queryDevices(self):
         Serial = self.serial
@@ -48,7 +53,7 @@ class SPIOT:
         hex = tNameList[typeName]["HEX"]
         #hex = '0x{0:02x}'.format(intValue) 
         Serial.write(serial.to_bytes([0x0E, hex, 0x5A, 0xA5, 0x00, 0x00]))
-        #print("RETURN --->{}".format(hex))
+        if(self.debug==True): print("RETURN --->{}".format(hex))
         #time.sleep(0.3)
 
     def removeTheDevice(self, typeName, idDevice):
@@ -92,12 +97,25 @@ class SPIOT:
         Serial = self.serial
 
         tNameList = self.dTypeName
-        hex = tNameList[typeName]["HEX"]
+        hex = tNameList[typeName]["HEX"] + idDevice
         #hex = '0x{0:02x}'.format(intValue)
         sData = [0x17, hex, 0x00, 0x00, 0x00, 0x00]
-        print("LED HEX: {}".format(sData))
+        if(self.debug==True): print("SEND FLASH CMD: {}".format(sData))
         Serial.write(serial.to_bytes(sData))
 
+    def setSmartPlug(self, idDevice, onoff):
+        Serial = self.serial
+
+        tNameList = self.dTypeName
+        hex = tNameList["PLUG"]["HEX"] + idDevice
+        if(onoff==1):
+            action = 0x01;
+        else:
+            action = 0x00;
+
+        sData = [0x0A, hex, action, 0x00, 0x00, 0x00]
+        if(self.debug==True): print("SEND PLUG CMD: {}".format(sData))
+        Serial.write(serial.to_bytes(sData))
 
     def ByteToHex( self, byteStr ):
         """
@@ -114,7 +132,7 @@ class SPIOT:
         #    return ''.join( hex ).strip()
 
         rtnValue = ''.join( [ "%02X " % ord( x ) for x in byteStr ] ).strip()
-        #print("Original:{} --> HEX:{}".format(byteStr, rtnValue))
+        if(self.debug==True): print("Original:{} --> HEX:{}".format(byteStr, rtnValue))
 
         return rtnValue
 
@@ -263,9 +281,8 @@ class SPIOT:
 
                     self.dValue = deviceData
                     self.lastAccess = accessData
-                    #print ("Received and coverted: {}".format(stringRX))
-                    print("self.dValue = {}".format(deviceData))
-                    print("self.lastAccess = {}".format(accessData))
+                    if(self.debug==True): print("self.dValue = {}".format(deviceData))
+                    if(self.debug==True): print("self.lastAccess = {}".format(accessData))
 
 
     def bgUpdate(self):
@@ -279,8 +296,6 @@ class SPIOT:
                 Serial.flushInput()
                 self.pushDevice()
                 time.sleep(0.35)
-
-        lock.release()
 
     def id2DeviceGroupName(self, typeID=2):
         typeList = self.dTypeName
@@ -305,10 +320,11 @@ class SPIOT:
         return dHEX
 
     def __init__(self, baudrate=115200, portname='/dev/ttyAMA0', encrypt=False):
+        self.debug = debug
         self.process = False
         self.maxDeviceNum = MAXDEVICE_NUM
         self.dTypeName = DEVICE_INFO
-        self.dGroup = DEVICE_GROUP_HEX
+        #self.dGroup = DEVICE_GROUP_HEX
         self.dValue = {}
         self.lastAccess = {}
 
@@ -325,8 +341,6 @@ class SPIOT:
 
         if(encrypt==False):
             self.noEncrypt()
-            time.sleep(0.5)
-            self.queryDevices()
 
     def begin(self):
         self.process = True

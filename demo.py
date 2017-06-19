@@ -3,12 +3,11 @@ from SPIOT.spiotmodule import SPIOT
 
 iot = SPIOT(baudrate=115200, portname='/dev/ttyAMA0', encrypt=False)
 
-#iot.removeAllDevice()
 iot.begin()
 
 #time.sleep(1)
-
-iot.flashDevice("DOOR", 0)
+#iot.removeAllDevices()
+#iot.flashDevice("DOOR", 0)
 
 while True:
     try:
@@ -16,11 +15,15 @@ while True:
         #iot.updateQueue()
         #print ("update")
         #iot.removeGroupDevices("PIR")
-        print("DOOR --> {}, seconds: {}".format(iot.getDeviceData("DOOR", 0), iot.getDeviceTime("DOOR", 0)))
-        print("TH_T --> {}, seconds: {}".format(iot.getDeviceData("TH_T", 0), iot.getDeviceTime("TH_T", 0)))
-        print("TH_H --> {}, seconds: {}".format(iot.getDeviceData("TH_H", 0), iot.getDeviceTime("TH_H", 0)))
 
-        time.sleep(0.5)
+        for i in (0,1,2,3):
+            print("#{} PIR  --> {}, seconds: {}".format(i, iot.getDeviceData("PIR", i), iot.getDeviceTime("PIR", i)))
+            print("#{} DOOR --> {}, seconds: {}".format(i, iot.getDeviceData("DOOR", i), iot.getDeviceTime("DOOR", i)))
+            print("#{} TH_T --> {}, seconds: {}".format(i, iot.getDeviceData("TH_T", i), iot.getDeviceTime("TH_T", i)))
+            print("#{} TH_H --> {}, seconds: {}".format(i, iot.getDeviceData("TH_H", i), iot.getDeviceTime("TH_H", i)))
+            print(" --------------------------------------------------------------------------------- ")
+
+        time.sleep(1)
 
     except KeyboardInterrupt:
         print "Bye"
