@@ -1,7 +1,7 @@
 import time, sys
 from SPIOT.spiotmodule import SPIOT
 
-iot = SPIOT(baudrate=115200, portname='/dev/ttyAMA0', encrypt=False)
+iot = SPIOT(baudrate=115200, portname='/dev/ttyS0', encrypt=False)
 
 iot.begin()
 
