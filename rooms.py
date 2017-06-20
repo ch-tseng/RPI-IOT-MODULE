@@ -1,3 +1,5 @@
+
+import urllib2
 import time, sys
 from SPIOT.spiotmodule import SPIOT
 
@@ -8,6 +10,11 @@ from PIL import ImageFont
 import Adafruit_ILI9341 as TFT
 import Adafruit_GPIO as GPIO
 import Adafruit_GPIO.SPI as SPI
+
+ThingSpeakEnabled = True
+ThingSpeakUpdatePeriod = 30  #seconds
+ThingSpeakURL = "https://api.thingspeak.com/update?api_key="
+CHkey = [ "S5P44WKNJN7FWSJT", "41OVS979P9ONI7MM", "7HI4406LTFC7JN0B", "XXQIPDBM6TTHC7I9" ]
 
 #Default colors for rooms
 colorRoom = (203, 241, 249)
@@ -119,6 +126,30 @@ def printTH(ID, T, H):
     draw_rotated_text(disp.buffer, str(T)+'C', post_T[ID], 90, font, fill=(3,141,3))
     draw_rotated_text(disp.buffer, str(H)+'%', post_H[ID], 90, font, fill=(0,0,255))
 
+def updateThingSpeak(T, H, PIR, DOOR, PLUG, CH):
+    global lastThingsSpeakTime, ThingSpeakURL, CHkey
+
+    if(PIR>1):
+        PIR = 1
+    else:
+        PIR = 0
+
+    if(DOOR>1):
+        DOOR = 1
+    else:
+        DOOR = 0
+
+    if(PLUG>1):
+        PLUG = 1
+    else:
+        PLUG = 0
+
+    URL = ThingSpeakURL + CHkey[CH-1] + "&field1=" + str(T) + "&field2=" + str(H) + "&field3=" + str(DOOR) + "&field4=" + str(PIR) + "&field5=" + str(PLUG)
+    print(URL)
+    lastThingsSpeakTime = time.time()
+
+    urllib2.urlopen(URL)
+
 #--------------------------------------------------------------
 iot = SPIOT(baudrate=115200, portname='/dev/ttyS0', encrypt=False)
 
@@ -137,16 +168,23 @@ drawDOOR(1, 0)
 drawDOOR(2, 0)
 drawDOOR(3, 0)
 draw_plug(0, disp.buffer, 90, 0)
-draw_plug(1, disp.buffer, 90, 0)
-draw_plug(2, disp.buffer, 90, 0)
-draw_plug(3, disp.buffer, 90, 0)
+#draw_plug(1, disp.buffer, 90, 0)
+#draw_plug(2, disp.buffer, 90, 0)
+#draw_plug(3, disp.buffer, 90, 0)
 
 lastTH = [(0, 0), (0, 0), (0, 0), (0, 0)]
 lastPIR = [0, 0, 0, 0]
 lastDOOR = [0, 0, 0, 0]
 lastPLUG = [0, 0, 0, 0]
 
+lastThingsSpeakTime = 0
+
 while True:
+    if( (time.time() - lastThingsSpeakTime)>ThingSpeakUpdatePeriod):
+        updateThingSpeakNow = True
+    else:
+        updateThingSpeakNow = False
+
     for i in (0,1,2,3):
         DOOR[i] = iot.getDeviceData("DOOR", i)
         PIR[i] = iot.getDeviceData("PIR", i)    
@@ -172,6 +210,9 @@ while True:
             draw_plug(i, disp.buffer, 90, PLUG[i])
             lastPLUG[i] = PLUG[i]
 
+        if( updateThingSpeakNow==True ):
+            if(ThingSpeakEnabled==True):
+                updateThingSpeak(TH_T[i], TH_H[i], PIR[i], DOOR[i], PLUG[i], i+1)
 
     disp.display()
     time.sleep(0.5)
