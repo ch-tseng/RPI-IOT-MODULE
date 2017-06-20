@@ -19,6 +19,7 @@ posRooms = [ (5, 5, 112, 152), (128, 5, 235, 152), (5, 160, 112, 307), (128, 160
 posDoorClose = [ (109, 20 , 109, 80), (128, 50, 128, 110), (109, 175, 109, 235), (128, 225, 128, 285) ]
 posDoorOpen = [ (106, 20, 84, 73), (132, 123, 156, 70), (106, 175, 86, 228), (132, 277, 152, 225) ]
 posThief = [ (56, 122), (160, 122), (56, 277), (160, 277)  ]
+posPlug = [ (56, 42), (160, 42), (56, 197), (160, 197) ]
 post_T = [ (10, 80), (200, 80), (10, 235), (200, 235) ]
 post_H = [ (10, 30), (200, 30), (10, 185), (200, 185) ]
 posClearTH = [(10, 120, 32, 10), (200, 120, 222, 10), (10, 275, 32, 165), (200, 275, 222, 165) ]
@@ -30,6 +31,7 @@ PIR = [0, 0, 0, 0]
 TH_T = [0, 0, 0, 0]
 TH_H = [0, 0, 0, 0]
 DOOR = [0, 0, 0, 0]
+PLUG = [0, 0, 0, 0]
 
 # Raspberry Pi configuration.
 DC = 18
@@ -85,14 +87,30 @@ def draw_rotated_text(image, text, position, angle, font, fill=(255,255,255)):
     # Paste the text into the image, using it as a mask for transparency.
     image.paste(rotated, position, rotated)
 
-def draw_thief(ID, image, thiefImg, angle, status=0):
+def draw_thief(ID, image, angle, status=0):
     global posThief, colorRoom, colorDoor
+    thiefImg = Image.open('thief.jpg')
     #clear
     draw.rectangle((posThief[ID][0], posThief[ID][1], posThief[ID][0]+28, posThief[ID][1]+30), fill=colorRoom)
 
     if(status>0):
         thiefRotated = thiefImg.rotate(angle, expand=1)
         image.paste(thiefRotated, posThief[ID])
+
+def draw_plug(ID, image, angle, status=0):
+    global posPlug, colorRoom, colorDoor
+    #clear
+    draw.rectangle((posPlug[ID][0], posPlug[ID][1], posPlug[ID][0]+30, posPlug[ID][1]+30), fill=colorRoom)
+
+    if(status>0):
+        plugImg = Image.open('plug1.jpg')
+        plugRotated = plugImg.rotate(angle, expand=1)
+        image.paste(plugImg, posPlug[ID])
+
+    else:
+        plugImg = Image.open('plug0.jpg')
+        plugRotated = plugImg.rotate(angle, expand=1)
+        image.paste(plugImg, posPlug[ID])
 
 def printTH(ID, T, H):
     global colorRoom, posClearTH
@@ -118,11 +136,15 @@ drawDOOR(0, 0)
 drawDOOR(1, 0)
 drawDOOR(2, 0)
 drawDOOR(3, 0)
+draw_plug(0, disp.buffer, 90, 0)
+draw_plug(1, disp.buffer, 90, 0)
+draw_plug(2, disp.buffer, 90, 0)
+draw_plug(3, disp.buffer, 90, 0)
 
 lastTH = [(0, 0), (0, 0), (0, 0), (0, 0)]
 lastPIR = [0, 0, 0, 0]
 lastDOOR = [0, 0, 0, 0]
-thief = Image.open('thief.jpg')
+lastPLUG = [0, 0, 0, 0]
 
 while True:
     for i in (0,1,2,3):
@@ -130,7 +152,8 @@ while True:
         PIR[i] = iot.getDeviceData("PIR", i)    
         TH_T[i] = iot.getDeviceData("TH_T", i)
         TH_H[i] = iot.getDeviceData("TH_H", i)
-        print("#{} --> DOOR:{}, PIR:{}, TH_T:{}, TH_H:{}".format(i, DOOR[i], PIR[i], TH_T[i], TH_H[i]))
+        PLUG[i] = iot.getDeviceData("PLUG", i)
+        print("#{} --> DOOR:{}, PIR:{}, PLUG:{}, TH_T:{}, TH_H:{}".format(i, DOOR[i], PIR[i], PLUG[i], TH_T[i], TH_H[i]))
 
         if(lastTH[i] != (TH_T[i], TH_H[i])):
             #(y, x)
@@ -138,12 +161,17 @@ while True:
             lastTH[i] = (TH_T[i], TH_H[i])
 
         if(lastPIR[i] != PIR[i]):
-            draw_thief(i, disp.buffer, thief, 90, PIR[i])
+            draw_thief(i, disp.buffer, 90, PIR[i])
             lastPIR[i] = PIR[i]
 
         if(lastDOOR[i] != DOOR[i]):
             drawDOOR(i, DOOR[i])
             lastDOOR[i] = DOOR[i]
+
+        if(lastPLUG[i] != PLUG[i]):
+            draw_plug(i, disp.buffer, 90, PLUG[i])
+            lastPLUG[i] = PLUG[i]
+
 
     disp.display()
     time.sleep(0.5)
