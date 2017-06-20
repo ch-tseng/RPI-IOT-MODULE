@@ -1,23 +1,6 @@
-# Copyright (c) 2014 Adafruit Industries
-# Author: Tony DiCola
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
+import time, sys
+from SPIOT.spiotmodule import SPIOT
+
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
@@ -28,11 +11,25 @@ import Adafruit_GPIO.SPI as SPI
 
 #Default colors for rooms
 colorRoom = (203, 241, 249)
-colorWall = (74, 35, 4)
+colorWall = (66, 65, 63)
 colorDoor = (184, 84, 3)
+
 #Positions for rooms ( y1, x1, y2, x2)
 posRooms = [ (5, 5, 112, 152), (128, 5, 235, 152), (5, 160, 112, 307), (128, 160, 235, 307) ]
-posDoors = [ (106, 20, 112, 80), (128, 20, 134, 80), (106, 175, 112, 235), (128, 175, 134, 235) ]
+posDoorClose = [ (109, 20 , 109, 80), (128, 50, 128, 110), (109, 175, 109, 235), (128, 225, 128, 285) ]
+posDoorOpen = [ (106, 20, 84, 73), (132, 123, 156, 70), (106, 175, 86, 228), (132, 277, 152, 225) ]
+posThief = [ (56, 122), (160, 122), (56, 277), (160, 277)  ]
+post_T = [ (10, 80), (200, 80), (10, 235), (200, 235) ]
+post_H = [ (10, 30), (200, 30), (10, 185), (200, 185) ]
+posClearTH = [(10, 120, 32, 10), (200, 120, 222, 10), (10, 275, 32, 165), (200, 275, 222, 165) ]
+
+#font = ImageFont.load_default()
+font = ImageFont.truetype("fonts/font1.ttf", 18)
+
+PIR = [0, 0, 0, 0]
+TH_T = [0, 0, 0, 0]
+TH_H = [0, 0, 0, 0]
+DOOR = [0, 0, 0, 0]
 
 # Raspberry Pi configuration.
 DC = 18
@@ -56,30 +53,24 @@ disp.clear((0, 0, 0))
 # Get a PIL Draw object to start drawing on the display buffer.
 draw = disp.draw()
 
-# Draw a purple rectangle with yellow outline.
-# ( y1, x1, y2, x2)
-draw.rectangle(posRooms[0], outline=colorWall, fill=colorRoom)
-draw.rectangle(posRooms[1], outline=colorWall, fill=colorRoom)
-draw.rectangle(posRooms[2], outline=colorWall, fill=colorRoom)
-draw.rectangle(posRooms[3], outline=colorWall, fill=colorRoom)
+def drawRoom(ID):
+    global posRooms, colorWall, colorRoom
+    draw.rectangle(posRooms[ID], outline=colorWall, fill=colorRoom)
 
-#Doors
-draw.rectangle(posDoors[0], outline=colorWall, fill=colorDoor)
-draw.rectangle(posDoors[1], outline=colorWall, fill=colorDoor)
-draw.rectangle(posDoors[2], outline=colorWall, fill=colorDoor)
-draw.rectangle(posDoors[3], outline=colorWall, fill=colorDoor)
+def drawDOOR(ID, status = 0):
+    global colorRoom, colorWall, posDoorClose, posDoorOpen
 
-# Load default font.
-#font = ImageFont.load_default()
-font = ImageFont.truetype("fonts/font1.ttf", 18)
+    #clear
+    draw.line(posDoorClose[ID], fill=colorRoom, width=6)
+    draw.line(posDoorOpen[ID], fill=colorRoom, width=6)
+    #draw.rectangle((posRooms[ID][0], posRooms[ID][1], posDoorOpen[ID][2], posDoorOpen[ID][3]), outline=colorWall, fill=colorRoom)
 
-# Alternatively load a TTF font.
-# Some other nice fonts to try: http://www.dafont.com/bitmap.php
-#font = ImageFont.truetype('Minecraftia.ttf', 16)
+    #draw
+    if status==0:
+        draw.line(posDoorClose[ID], fill=colorDoor, width=6)
+    else:
+        draw.line(posDoorOpen[ID], fill=colorDoor, width=6)
 
-# Define a function to create rotated text.  Unfortunately PIL doesn't have good
-# native support for rotated fonts, but this function can be used to make a
-# text image and rotate it so it's easy to paste in the buffer.
 def draw_rotated_text(image, text, position, angle, font, fill=(255,255,255)):
     # Get rendered font width and height.
     draw = ImageDraw.Draw(image)
@@ -94,11 +85,65 @@ def draw_rotated_text(image, text, position, angle, font, fill=(255,255,255)):
     # Paste the text into the image, using it as a mask for transparency.
     image.paste(rotated, position, rotated)
 
-# Write two lines of white text on the buffer, rotated 90 degrees counter clockwise.
-#(y, x)
-draw_rotated_text(disp.buffer, 'T:', (10, 60), 90, font, fill=(0,255,0))
-draw_rotated_text(disp.buffer, 'H:', (10, 30), 90, font, fill=(0,0,255))
+def draw_thief(ID, image, thiefImg, angle, status=0):
+    global posThief, colorRoom, colorDoor
+    #clear
+    draw.rectangle((posThief[ID][0], posThief[ID][1], posThief[ID][0]+28, posThief[ID][1]+30), fill=colorRoom)
 
-# Write buffer to display hardware, must be called to make things visible on the
-# display!
-disp.display()
+    if(status>0):
+        thiefRotated = thiefImg.rotate(angle, expand=1)
+        image.paste(thiefRotated, posThief[ID])
+
+def printTH(ID, T, H):
+    global colorRoom, posClearTH
+    draw.rectangle(posClearTH[ID], fill=colorRoom)
+
+    draw_rotated_text(disp.buffer, str(T)+'C', post_T[ID], 90, font, fill=(3,141,3))
+    draw_rotated_text(disp.buffer, str(H)+'%', post_H[ID], 90, font, fill=(0,0,255))
+
+#--------------------------------------------------------------
+iot = SPIOT(baudrate=115200, portname='/dev/ttyS0', encrypt=False)
+
+iot.begin()
+#time.sleep(1)
+#iot.removeAllDevices()
+#iot.flashDevice("DOOR", 0)
+
+
+drawRoom(0)
+drawRoom(1)
+drawRoom(2)
+drawRoom(3)
+drawDOOR(0, 0)
+drawDOOR(1, 0)
+drawDOOR(2, 0)
+drawDOOR(3, 0)
+
+lastTH = [(0, 0), (0, 0), (0, 0), (0, 0)]
+lastPIR = [0, 0, 0, 0]
+lastDOOR = [0, 0, 0, 0]
+thief = Image.open('thief.jpg')
+
+while True:
+    for i in (0,1,2,3):
+        DOOR[i] = iot.getDeviceData("DOOR", i)
+        PIR[i] = iot.getDeviceData("PIR", i)    
+        TH_T[i] = iot.getDeviceData("TH_T", i)
+        TH_H[i] = iot.getDeviceData("TH_H", i)
+        print("#{} --> DOOR:{}, PIR:{}, TH_T:{}, TH_H:{}".format(i, DOOR[i], PIR[i], TH_T[i], TH_H[i]))
+
+        if(lastTH[i] != (TH_T[i], TH_H[i])):
+            #(y, x)
+            printTH(i, TH_T[i], TH_H[i])
+            lastTH[i] = (TH_T[i], TH_H[i])
+
+        if(lastPIR[i] != PIR[i]):
+            draw_thief(i, disp.buffer, thief, 90, PIR[i])
+            lastPIR[i] = PIR[i]
+
+        if(lastDOOR[i] != DOOR[i]):
+            drawDOOR(i, DOOR[i])
+            lastDOOR[i] = DOOR[i]
+
+    disp.display()
+    time.sleep(0.5)
