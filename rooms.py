@@ -14,7 +14,7 @@ import Adafruit_GPIO.SPI as SPI
 ThingSpeakEnabled = True
 ThingSpeakUpdatePeriod = 30  #seconds
 ThingSpeakURL = "https://api.thingspeak.com/update?api_key="
-CHkey = [ "S5P44WKNJN7FWSJT", "41OVS979P9ONI7MM", "7HI4406LTFC7JN0B", "XXQIPDBM6TTHC7I9" ]
+CHkey = [ "xxxxxxxx", "xxxxxxx", "xxxxxxxxxx", "xxxxxxxxxx" ]
 
 #Default colors for rooms
 colorRoom = (203, 241, 249)
