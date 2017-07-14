@@ -17,6 +17,7 @@ while True:
         #iot.removeGroupDevices("PIR")
 
         for i in (0,1,2,3):
+            print("#{} PLUG  --> {}, seconds: {}".format(i, iot.getDeviceData("PLUG", i), iot.getDeviceTime("PLUG", i)))
             print("#{} PIR  --> {}, seconds: {}".format(i, iot.getDeviceData("PIR", i), iot.getDeviceTime("PIR", i)))
             print("#{} DOOR --> {}, seconds: {}".format(i, iot.getDeviceData("DOOR", i), iot.getDeviceTime("DOOR", i)))
             print("#{} TH_T --> {}, seconds: {}".format(i, iot.getDeviceData("TH_T", i), iot.getDeviceTime("TH_T", i)))

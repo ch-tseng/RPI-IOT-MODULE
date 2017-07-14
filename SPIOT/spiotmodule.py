@@ -185,7 +185,8 @@ class SPIOT:
                                 for line in Serial.read():
                                     dataRX = self.ByteToHex(line)
                                     stringRX = stringRX + "-" + dataRX
-                                    #print("deviceData={}, DOOR typeID={} , deviceID={}, value={}".format(deviceData, self.dTypeName["PLUG"], deviceID, int(dataRX, 16)))
+                                    #print(stringRX)
+                                    #print("deviceData={}, PLUG typeID={} , deviceID={}, value={}".format(deviceData, self.dTypeName["PLUG"], deviceID, int(dataRX, 16)))
 
                                     if self.dTypeName["PLUG"]["ID"] in deviceData:
                                         deviceData[self.dTypeName["PLUG"]["ID"]][deviceID] = int(dataRX, 16)
@@ -207,7 +208,7 @@ class SPIOT:
                                 for line in Serial.read():
                                     dataRX = self.ByteToHex(line)
                                     stringRX = stringRX + "-" + dataRX
-                                    #print("deviceData={}, DOOR typeID={} , deviceID={}, value={}".format(deviceData, self.dTypeName["PIR"], deviceID, int(dataRX, 16)))
+                                    #print("deviceData={}, PIR typeID={} , deviceID={}, value={}".format(deviceData, self.dTypeName["PIR"], deviceID, int(dataRX, 16)))
 
                                     if self.dTypeName["PIR"]["ID"] in deviceData:
                                         deviceData[self.dTypeName["PIR"]["ID"]][deviceID] = int(dataRX, 16)
@@ -278,7 +279,7 @@ class SPIOT:
                                             else:
                                                 accessData[self.dTypeName["TH_H"]["ID"]] = { deviceID: int(time.time()) }
 
-
+                    #print (stringRX)
                     self.dValue = deviceData
                     self.lastAccess = accessData
                     if(self.debug==True): print("self.dValue = {}".format(deviceData))
