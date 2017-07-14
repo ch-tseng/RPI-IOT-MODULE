@@ -206,9 +206,15 @@ while True:
             draw_thief(i, disp.buffer, 90, PIR[i])
             lastPIR[i] = PIR[i]
 
+            if( i==1 or i==2 ):
+                   iot.setSmartPlug(i-1, PIR[i])
+
         if(lastDOOR[i] != DOOR[i]):
             drawDOOR(i, DOOR[i])
             lastDOOR[i] = DOOR[i]
+
+            if(i==3):
+                iot.setSmartPlug(i-1, DOOR[i])
 
         #for special case.....
         if(i==1 or i==2):
